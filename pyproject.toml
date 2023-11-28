@@ -1,0 +1,15 @@
+[tool.poetry]
+name = "blogs-pydantic"
+version = "0.1.0"
+description = ""
+authors = ["jduran9987 <jduran9987@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.11"
+pydantic = "^2.5.2"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
