@@ -1,5 +1,5 @@
 """
-V1 - Basic validation.
+V2 - Semantic validation.
 
 Validate basic data types. Feel free to play around with the data types
 defined in the pydantic models.
@@ -22,7 +22,7 @@ schema = {
     "name": "Tim Duncan",
     "teams": [
         {
-            "name": "San Antonio Spurs",
+            "name": "SAN ANTONIO SPURS",
             "championships": [1999, 2003, 2005, 2007, 2014]
         }
     ],
@@ -54,8 +54,8 @@ class Teams(BaseModel):
         names = value.split(" ")
 
         for name in names:
-            if not name[0].isupper():
-                raise ValueError("Team name  must be capitalized.")
+            if not name.isupper():
+                raise ValueError("Team name must be upper case.")
 
         return value
 
@@ -79,12 +79,12 @@ class Player(BaseModel):
 
     @field_validator("name")
     @classmethod
-    def validate_upper_case_names(cls, value):
+    def validate_capitalized_names(cls, value):
         names = value.split(" ")
 
         for name in names:
             if not name[0].isupper():
-                raise ValueError("Names must be capitalized.")
+                raise ValueError("Player names must be capitalized.")
 
         return value
 
