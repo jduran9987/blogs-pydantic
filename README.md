@@ -345,13 +345,15 @@ Use the `blogs_pydantic/v2_semantic_validation.py` script to test other ways of 
 
 ## V3 - Schema Validation
 
+There will be times when data producers change our data sources' schema. Whether it be the addition or removal of a column, we'll need a way to handle these changes gracefully within our pipelines.
+
 ### Extra fields
-We'll need a way to detect changes to the schema of the API response. By default, Pydantic ignores any newly added columns. Let's verify this by validating the data after adding the `height` field.
+By default, Pydantic ignores any newly added columns. Let's verify this behavior by adding a new field `height` to our API response…
 
 ```python
 ...
 
-# Set the dob field to 1800-01-01
+# Add new field called height.
 schema = {
     ...
     "height": "6 feet 11 inches",
@@ -389,9 +391,15 @@ Output
 """
 ```
 
+<<<<<<< HEAD
 The newly added `height` field is ignored. However, in most cases, you'll want to know if there are any additional fields even if you don't plan on immediately using them.  
 
 We can configure Pydantic to "allow" fields not defined in our models. We can then use the `BaseModel.model_extra` attribute to help detect these fields and log them appropriately.
+=======
+The output completely ignores the new field, and validation passes.
+ 
+The downside of this behavior is that the pipeline dismisses additional fields that could add business value. A better approach is to detect additional fields and log them appropriately. We do this by configuring Pydantic to "allow" fields not defined in our models.
+>>>>>>> 55aecb1 (added v3 schema validation)
 
 ```python
 ...
@@ -442,11 +450,13 @@ New column detected: height
 ```
 
 ### Non-required fields
-We can define our models such that certain fields are not required or can be `None`. The following guide shows how to do so.
+Fields defined in Pydantic models can be set to optional and nullable. The following guide shows how to do so.
 - `field: str` <- Required, cannot be `None`.
 - `field: str = None` <- Not required, defaults to `None` if missing.
 - `field: str | None` <- Required, can be `None`.
 - `field: str | None = None` <- Not required, can be `None`, defaults to `None`.
+
+This is useful when the data producer does not guarantee the delivery of a given field.
 
 ```python
 ...
@@ -511,4 +521,7 @@ New column detected: height
 """
 ```
 
-Run the code the `blogs_pydantic/v2_schema_validation.py` script to test the above changes. 
+We removed the `dob` field in the above example, yet it still passed validation. The field appeared in our data as its default value `None`.
+
+Use the code in blogs_pydantic/v3_schema_validation.py to test out more schema changes.
+
