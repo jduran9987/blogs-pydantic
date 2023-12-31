@@ -1,7 +1,9 @@
 # Pydantic for Data Engineers.
 
-## V1 - Basic Validation.
-First, we need a contract. Pretend the following spec tells us what we should expect from some API response.
+Below is a quick guide on using Pydantic within your data pipelines. We create a fake API response (NBA player data) and validate it using Pydantic models. 
+
+## V1 - Data type  Validation.
+First, we need a contract. Pretend the following spec tells us what to expect from some API response.
 
 ```javascript
 # Data about NBA players.
@@ -10,7 +12,7 @@ id: int,
 name: str,
 teams: [
     {
-        name:str,
+        name: str,
         years: list[int]
     }
 ],
@@ -118,9 +120,9 @@ A few noteworthy things are happening in the above script...
 - One class/model is created per nested object (in the API response) and referenced in the parent class.
 - JSON data types are limited. If possible, they will be coerced into the data types specified in the `pydantic` model. Otherwise, validation fails.
 
-Before we move onto more complicated examples, let's break validation by introducing a value to the `last_updated` field that cannot be coerced into a datetime object.
+Before we move on to more complicated examples, let's break validation by introducing a value to the `last_updated` field that cannot be coerced into a datetime object.
 
-In the `python3 blogs_pydantic/v1_basic_validation.py` script, change the `last_updated` field on line 53 to the string `"this cannot be coerced into a datetime object"` then re-run the script.
+In the `blogs_pydantic/v1_data_type_validation.py` script, change the `last_updated` field on line 53 to the string `"this cannot be coerced into a datetime object"` and then re-run the script.
 
 ```python
 from datetime import date, datetime
@@ -301,11 +303,11 @@ We create two custom types to keep things DRY.
 
 **Pydantic Types**
 
-Pydantic offers a suite of prebuilt types that enforce common constraints. We use the `PositiveInt` and `NonNegativeFloat` for the `id` and `career_stats.*` fields respectively.
+Pydantic offers a suite of prebuilt types that enforce common constraints. We use the `PositiveInt` and `NonNegativeFloat` for the `id` and `career_stats.*` fields.
 
 **Field Validation**
 
-We can use the `field_validator` class method to apply complex validation on fields. We pass in the pydantic model and field value to validate into the method, and return the validated value or raise an error if validation fails. We use the `field_validator` to validate the `dob`, `name`, and `teams.name` fields.
+We can use the `field_validator` class method to apply complex validation on fields. We pass in the Pydantic model and field value to validate into the method, and return the validated value or raise an error if validation fails. We use the `field_validator` to validate the `dob`, `name`, and `teams.name` fields.
 
 Once again, let's break validation by setting the `dob` field to a date prior to 1900-01-01.
 
@@ -342,4 +344,171 @@ dob
 Use the `blogs_pydantic/v2_semantic_validation.py` script to test other ways of breaking validation.
 
 ## V3 - Schema Validation
-We may run into a scenario where the data producer of this API adds an additional column without our knowledge. Lucky for us, Pydantic ignores additional fields.
+
+### Extra fields
+We'll need a way to detect changes to the schema of the API response. By default, Pydantic ignores any newly added columns. Let's verify this by validating the data after adding the `height` field.
+
+```python
+...
+
+# Set the dob field to 1800-01-01
+schema = {
+    ...
+    "height": "6 feet 11 inches",
+    ...
+}
+
+if __name__ == "__main__":
+    player = Player(**schema)
+
+    print(player.model_dump())
+
+"""
+Output
+
+{
+    'id': 1,
+    'name': 'Tim Duncan',
+    'teams': [
+        {
+            'name': 'SAN ANTONIO SPURS',
+            'championships': [1999, 2003, 2005, 2007, 2014]
+        }
+    ],
+    'career_stats': {
+        'ppg': 19.0,
+        'rpg': 10.8,
+        'apg': 3.0
+    },
+    'dob': datetime.date(1976, 4, 25),
+    'draft_year': 1997,
+    'positions_played': ['F', 'C'],
+    'is_active': False,
+    'last_updated': datetime.datetime(2023, 10, 10, 0, 0)
+}
+"""
+```
+
+The newly added `height` field is ignored. However, in most cases, you'll want to know if there are any additional fields even if you don't plan on immediately using them.  
+
+We can configure Pydantic to "allow" fields not defined in our models. We can then use the `BaseModel.model_extra` attribute to help detect these fields and log them appropriately.
+
+```python
+...
+
+import logging
+
+...
+
+if __name__ == "__main__":
+    player = Player(**schema)
+
+    print(player.model_dump())
+
+    new_cols = player.model_extra
+
+    # Log new columns
+    if new_cols:
+        for col in new_cols.keys():
+            print(f"New column detected: {col}")
+            logging.warn(f"New column detected: {col}")
+
+"""
+Output
+
+{
+    'id': 1,
+    'name': 'Tim Duncan',
+    'teams': [
+        {
+            'name': 'SAN ANTONIO SPURS',
+            'championships': [1999, 2003, 2005, 2007, 2014]
+        }
+    ],
+    'career_stats': {
+        'ppg': 19.0,
+        'rpg': 10.8,
+        'apg': 3.0
+    },
+    'dob': datetime.date(1976, 4, 25),
+    'draft_year': 1997,
+    'positions_played': ['F', 'C'],
+    'is_active': False,
+    'last_updated': datetime.datetime(2023, 10, 10, 0, 0)
+}
+
+New column detected: height
+"""
+```
+
+### Non-required fields
+We can define our models such that certain fields are not required or can be `None`. The following guide shows how to do so.
+- `field: str` <- Required, cannot be `None`.
+- `field: str = None` <- Not required, defaults to `None` if missing.
+- `field: str | None` <- Required, can be `None`.
+- `field: str | None = None` <- Not required, can be `None`, defaults to `None`.
+
+```python
+...
+
+# Remove dob and change last_updated to None
+schema = {
+    ...
+    # "dob": "1976-04-25"
+    ...
+    "last_updated": None
+}
+
+...
+
+class Player(BaseModel):
+    ...
+
+    dob: date = None
+    ...
+    last_updated: datetime | None
+
+...
+
+if __name__ == "__main__":
+    player = Player(**schema)
+
+    print(player.model_dump())
+
+    new_cols = player.model_extra
+
+    # Log new columns
+    if new_cols:
+        for col in new_cols.keys():
+            print(f"New column detected: {col}")
+            logging.warn(f"New column detected: {col}")
+
+"""
+Output
+
+{
+    'id': 1,
+    'name': 'Tim Duncan',
+    'teams': [
+        {
+            'name': 'SAN ANTONIO SPURS',
+            'championships': [1999, 2003, 2005, 2007, 2014]
+        }
+    ],
+    'career_stats': {
+        'ppg': 19.0,
+        'rpg': 10.8,
+        'apg': 3.0
+    },
+    'dob': None,
+    'draft_year': 1997,
+    'positions_played': ['F', 'C'],
+    'is_active': False,
+    'last_updated': None
+}
+
+New column detected: height
+"""
+```
+
+Run the code the `blogs_pydantic/v2_schema_validation.py` script to test the above changes. 

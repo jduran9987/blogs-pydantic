@@ -33,7 +33,7 @@ schema = {
     },
     "dob": "1976-04-25",
     "draft_year": 1997,
-    "position_played": ["F", "C"],
+    "positions_played": ["F", "C"],
     "is_active": False,
     "last_updated": "2023-10-10T00:00:00.0000"
 }
@@ -73,7 +73,7 @@ class Player(BaseModel):
     career_stats: CareerStats
     dob: date
     draft_year: FirstYearInt
-    position_played: list[PositionsEnum]
+    positions_played: list[PositionsEnum]
     is_active: bool
     last_updated: datetime
 
