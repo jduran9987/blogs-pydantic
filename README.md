@@ -391,15 +391,9 @@ Output
 """
 ```
 
-<<<<<<< HEAD
-The newly added `height` field is ignored. However, in most cases, you'll want to know if there are any additional fields even if you don't plan on immediately using them.  
-
-We can configure Pydantic to "allow" fields not defined in our models. We can then use the `BaseModel.model_extra` attribute to help detect these fields and log them appropriately.
-=======
 The output completely ignores the new field, and validation passes.
  
 The downside of this behavior is that the pipeline dismisses additional fields that could add business value. A better approach is to detect additional fields and log them appropriately. We do this by configuring Pydantic to "allow" fields not defined in our models.
->>>>>>> 55aecb1 (added v3 schema validation)
 
 ```python
 ...
@@ -523,5 +517,4 @@ New column detected: height
 
 We removed the `dob` field in the above example, yet it still passed validation. The field appeared in our data as its default value `None`.
 
-Use the code in blogs_pydantic/v3_schema_validation.py to test out more schema changes.
-
+Use the code in `blogs_pydantic/v3_schema_validation.py` to test out more schema changes.
